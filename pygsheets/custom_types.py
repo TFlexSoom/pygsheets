@@ -119,3 +119,41 @@ class ChartType(Enum):
     SCATTER = "SCATTER"
     COMBO = "COMBO"
     STEPPED_AREA = "STEPPED_AREA"
+
+class PivotValueLayout(Enum):
+    """Enum for Pivot Table Value Layout
+
+    Reference: `<https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/pivot-tables#PivotValueLayout>`_
+    """
+    HORIZONTAL = "HORIZONTAL"
+    VERTICAL = "VERTICAL"
+
+class SortOrder(Enum):
+    """Enum for Sorting Order
+
+    Reference: `<https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/other#SortOrder>`_
+    """
+    ASCENDING = "ASCENDING"
+    DESCENDING = "DESCENDING"
+
+class DateTimeRuleType(Enum):
+    """Enum for DateTimeRuleType
+
+    Reference: `<https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/pivot-tables#datetimeruletype>`_
+    """
+
+    SECOND = "SECOND"
+    MINUTE = "MINUTE"
+    HOUR = "HOUR"
+    HOUR_MINUTE = "HOUR_MINUTE"
+    HOUR_MINUTE_AMPM = "HOUR_MINUTE_AMPM"
+    DAY_OF_WEEK = "DAY_OF_WEEK"
+    DAY_OF_YEAR = "DAY_OF_YEAR"
+    DAY_OF_MONTH = "DAY_OF_MONTH"
+    DAY_MONTH = "DAY_MONTH"
+    MONTH = "MONTH"
+    QUARTER = "QUARTER"
+    YEAR = "YEAR"
+    YEAR_MONTH = "YEAR_MONTH"
+    YEAR_QUARTER = "YEAR_QUARTER"
+    YEAR_MONTH_DAY = "YEAR_MONTH_DAY"
