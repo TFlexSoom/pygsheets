@@ -1692,6 +1692,31 @@ class Worksheet(object):
             if not title or chart.get('spec', {}).get('title', '') == title:
                 matched_charts.append(Chart(worksheet=self, json_obj=chart))
         return matched_charts
+    
+    def get_pivot_tables(self, start=None, end=None, grange=None):
+        """
+        Returns a list of pivot table objects, can be filtered by cell range for
+        anchor cell
+
+        :param start: start address
+        :param end: end address
+        :param grange: address as grid range
+       
+        :return: list of :class:`PivotTable`
+        """
+
+        cells = []
+
+        try:
+            cells = self.get_values(start, end, returnas='cell', grange=grange)
+        except KeyError:
+            raise CellNotFound
+
+        return list(
+            map(lambda cell: cell.pivot_table, 
+                filter(lambda cell: cell.pivot_table is not None, cells)
+            )
+        )
 
     @batchable
     def set_data_validation(self, start=None, end=None, condition_type=None, condition_values=None,

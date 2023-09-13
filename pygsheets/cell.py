@@ -12,6 +12,7 @@ from pygsheets.custom_types import *
 from pygsheets.exceptions import (IncorrectCellLabel, CellNotFound, InvalidArgumentValue)
 from pygsheets.utils import format_addr, is_number, format_color
 from pygsheets.address import Address, GridRange
+from pygsheets.pivottable import PivotTable
 
 
 class Cell(object):
@@ -58,6 +59,8 @@ class Cell(object):
         Reference: `sheets api <https://developers.google.com/sheets/api/reference/rest/v4/ValueInputOption>`__"""
         self._wrap_strategy = None
         self.is_dirty = True
+        
+        self._pivot_table = None
 
         if cell_data is not None:
             self.set_json(cell_data)
@@ -229,6 +232,21 @@ class Cell(object):
     @simple.setter
     def simple(self, value):
         self._simplecell = value
+
+    @property
+    def pivot_table(self):
+        """Get Set the pivot table anchored at this cell"""
+        if self._pivot_table == None:
+            return None
+
+        return PivotTable.from_json(self._worksheet, self._pivot_table)
+    
+    @pivot_table.setter
+    def pivot_table(self, value: PivotTable | None):
+        if value == None:
+            self._pivot_table = None
+
+        self._pivot_table = value.get_json()
 
     def set_text_format(self, attribute, value):
         """
@@ -513,6 +531,9 @@ class Cell(object):
 
         if self._note is not None:
             ret_json["note"] = self._note
+        if self._pivot_table is not None:
+            ret_json["pivotTable"] = self._pivot_table
+        
         ret_json["userEnteredValue"] = {value_key: value}
 
         return ret_json
@@ -554,6 +575,7 @@ class Cell(object):
             VerticalAlignment[nvertical_alignment] if nvertical_alignment is not None else None
 
         self.hyperlink = cell_data.get('hyperlink', '')
+        self._pivot_table = cell_data.get('pivotTable', {})
         
     def __setattr__(self, key, value):
         if key not in ['_linked', '_worksheet']:

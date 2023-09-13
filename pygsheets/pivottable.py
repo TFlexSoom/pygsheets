@@ -10,10 +10,10 @@ This module represents a pivottable within the worksheet.
 from enum import Enum
 from typing import List, Dict, Any
 
+from pygsheets.address import GridRange
 from pygsheets.spreadsheet import Spreadsheet
 from pygsheets.utils import format_addr
-from pygsheets.cell import Cell
-from pygsheets.custom_types import ChartType, SortOrder, DateTimeRuleType
+from pygsheets.custom_types import SortOrder, DateTimeRuleType
 from pygsheets.exceptions import InvalidArgumentValue 
 
 class PivotGroupValueMetadata(object):
@@ -177,7 +177,7 @@ class PivotValue:
             "calculatedDisplayType": self._calculated_display_type,
             "sourcecolumnOffset": self._source_column_offset,
             "formula": self._formula,
-            "dataSourceColumnReference": self._data_source_column_reference,
+            "dataSourceColumnReference": self._data_source_column_reference
         }
 
 class PivotGroup(object):
@@ -226,9 +226,18 @@ class PivotGroup(object):
         self._group_limit = group_limit
         self._metadata = metadata
         if json_obj is None:
-            self._create_pivot_group()
+            self._create()
         else:
             self.set_json(json_obj)
+    
+    def _create(self):
+        pass
+
+    def set_json(self, json_obj: dict):
+        pass
+
+    def to_json(self) -> dict:
+        return {}
 
 
 class PivotTable(object):
@@ -256,28 +265,123 @@ class PivotTable(object):
     """
     def __init__(
         self,
-        worksheet : Spreadsheet,
-        source: tuple,
+        worksheet : Spreadsheet | None = None,
+        source: GridRange | None = None,
+        data_source_id: str = None,
         rows: List[PivotGroup] = [],
         columns: List[PivotGroup] = [],
         values:  List[PivotValue] = [],
         layout: PivotValueLayout = PivotValueLayout.HORIZONTAL,
         filter_specs: List[PivotFilterSpec] = [],
-        anchor_cell = None,
-        json_obj = None,
+        json_obj = {},
     ):
+        if (source == None) == (data_source_id == None):
+            raise InvalidArgumentValue("Source and Datasource cannot be none!")
+        
         self._worksheet = worksheet
         self._source = source
-        if source:
-            self._source = (format_addr(source[0], 'tuple'), format_addr(source[1], 'tuple'))
-
+        self._data_source_id = data_source_id
         self._rows = rows
         self._columns = columns
         self._values = values
         self._layout = layout
         self._filter_specs = filter_specs
-        self._anchor_cell = anchor_cell
-        if json_obj is None:
-            self._create_table()
-        else:
-            self.set_json(json_obj)
+        self.set_json(json_obj)
+    
+
+    @classmethod
+    def from_json(worksheet: Spreadsheet, json_obj: dict):
+        source = json_obj.get("source", None)
+        grange = None
+        if source:
+            grange = GridRange(worksheet=worksheet, propertiesjson=source)
+        
+        return PivotTable(
+            worksheet=worksheet, 
+            source=grange, 
+            data_source_id=json_obj.get("dataSourceId", None),
+            json_obj=json_obj
+        )
+
+    @property
+    def source(self) -> GridRange:
+        return self._source
+
+    @source.setter
+    def source(self, value: GridRange | None):
+        self._source = value
+    
+    @property
+    def data_source_id(self) -> str:
+        return self._data_source_id
+
+    @data_source_id.setter
+    def data_source_id(self, value: str):
+        self._data_source_id = value
+
+    @property
+    def rows(self) -> List[PivotGroup]:
+        return self._rows
+
+    @rows.setter
+    def rows(self, value: List[PivotGroup]):
+        self._rows = value
+    
+    @property
+    def columns(self) -> List[PivotGroup]:
+        return self._columns
+    
+    @columns.setter
+    def columns(self, value: List[PivotGroup]):
+        self._columns = value
+    
+    @property
+    def values(self) -> List[PivotValue]:
+        return self._values
+    
+    @values.setter
+    def values(self, value: List[PivotValue]):
+        self._values = value
+    
+    @property
+    def layout(self) -> PivotValueLayout:
+        return self._layout
+    
+    @layout.setter
+    def layout(self, value: PivotValueLayout):
+        self._layout = value
+    
+    @property
+    def filter_specs(self):
+        return self.filter_specs
+
+    @filter_specs.setter
+    def filter_specs(self, value: List[PivotFilterSpec]):
+        self._filter_specs = value
+    
+    @property
+    def json_obj(self):
+        return self._json_obj
+    
+    @json_obj.setter
+    def json_obj(self, value: dict):
+        self._json_obj = value
+
+    def set_json(self, json_obj: dict):
+        self._json_obj = {
+            "rows": json_obj.get("rows", lambda : list(map(PivotGroup.to_json, self._rows))),
+            "columns": json_obj.get("columns", lambda : list(map(PivotGroup.to_json, self._columns))),
+            "filterSpecs": json_obj.get("filterSpecs", lambda: list(map(PivotFilterSpec.get_json, self._filter_specs))),
+            "values": json_obj.get("values", lambda: list(map(PivotValue.get_json, self._values))),
+            "valueLayout": json_obj.get("valueLayout", self._layout.value)
+        }
+
+        if json_obj["source"] or self._source:
+            self._json_obj["source"] = json_obj.get("source", self._source.to_json())
+        
+        if json_obj["dataSourceId"] or self._data_source_id:
+            self._json_obj["dataSourceId"] = json_obj.get("dataSourceId", self._data_source_id)
+        
+        if (self._json_obj["source"] != None) and (self._json_obj["dataSourceId"] != None):
+            raise InvalidArgumentValue("source and dataSourceId are both defined")
+
