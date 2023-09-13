@@ -39,7 +39,8 @@ class PivotGroupSortValueBucket(object):
         }
 
 class PivotGroupRule(object):
-    pass
+    def get_json(self) -> dict:
+        return {}
 
 class ManualRule(PivotGroupRule):
     def __init__(self, groups: Dict[str, Any]):
@@ -86,7 +87,7 @@ class PivotGroupLimit:
         }
 
 class PivotFilterCriteria:
-    def __init__(self, visible_values: List[str], condition: BooleanCondition, visible_by_default: bool):
+    def __init__(self, visible_values: List[str], condition: str, visible_by_default: bool):
         self._visible_values = visible_values
         self._condition = condition
         self._visible_by_default = visible_by_default
@@ -203,41 +204,146 @@ class PivotGroup(object):
     def __init__(
         self,
         label: str,
-        source: tuple,
+        source: tuple | None,
+        column_offset: int | None,
         group_rule: PivotGroupRule,
         show_totals: bool = True,
         repeat_headings: bool = True,
         sort_order: SortOrder = SortOrder.ASCENDING,
-        value_bucket: PivotGroupSortValueBucket = None,
-        group_limit: PivotGroupLimit = None,
+        value_bucket: PivotGroupSortValueBucket | None = None,
+        group_limit: PivotGroupLimit | None = None,
         metadata: List[PivotGroupValueMetadata] = [],
-        json_obj = None,
+        json_obj = {},
     ):
         self._label = label
         self._group_rule = group_rule
         self._source = source
         if source:
             self._source = (format_addr(source[0], 'tuple'), format_addr(source[1], 'tuple'))
-
+        self._column_offset = column_offset
         self._show_totals = show_totals
         self._repeat_headings = repeat_headings
         self._sort_order = sort_order
         self._value_bucket = value_bucket
         self._group_limit = group_limit
         self._metadata = metadata
-        if json_obj is None:
-            self._create()
-        else:
-            self.set_json(json_obj)
+        self.set_json(json_obj)
     
-    def _create(self):
-        pass
+    @property
+    def label(self):
+        return self._label
+    
+    @label.setter
+    def label(self, value: str):
+        self._label = value
+
+    @property
+    def group_rule(self):
+        return self._group_rule
+    
+    @group_rule.setter
+    def group_rule(self, value: PivotGroupRule):
+        self._group_rule = value
+    
+    @property
+    def source(self):
+        return self._source
+
+    @source.setter
+    def source(self, value: tuple):
+        self._source = value
+    
+    @property
+    def column_offset(self):
+        return self._column_offset
+    
+    @column_offset.setter
+    def column_offset(self, value: int):
+        self._column_offset = value
+    
+    @property
+    def show_totals(self):
+        return self._show_totals
+    
+    @show_totals.setter
+    def show_totals(self, value: bool):
+        self._show_totals = value
+    
+    @property
+    def repeat_headings(self):
+        return self._repeat_headings
+    
+    @repeat_headings.setter
+    def repeat_headings(self, value: bool):
+        self._repeat_headings = value
+    
+    @property
+    def sort_order(self):
+        return self._sort_order
+    
+    @sort_order.setter
+    def sort_order(self, value: SortOrder):
+        self._sort_order = value
+    
+    @property
+    def value_bucket(self):
+        return self._value_bucket
+    
+    @value_bucket.setter
+    def value_bucket(self, value: PivotGroupSortValueBucket):
+        self._value_bucket = value
+    
+    @property
+    def group_limit(self):
+        return self._group_limit
+    
+    @group_limit.setter
+    def group_limit(self, value: PivotGroupLimit):
+        self._group_limit
+    
+    @property
+    def metadata(self):
+        return self._metadata
+
+    @metadata.setter
+    def metadata(self, value: List[PivotGroupValueMetadata]):
+        self._metadata = value
+    
+    @property
+    def json_obj(self):
+        return self.json_obj
+    
+    @json_obj.setter
+    def json_obj(self, value: dict):
+        self.set_json(value)
 
     def set_json(self, json_obj: dict):
-        pass
+        self._json_obj = {
+            "showTotals": json_obj.get("showTotals", self._show_totals),
+            "valueMetadata": json_obj.get("valueMetadata", 
+                lambda: list(map(PivotGroupValueMetadata.get_json, self._metadata))
+            ),
+            "sortOrder": json_obj.get("sortOrder", self._sort_order.value),
+            "repeatHeadings": json_obj.get("repeatHeadings", self._repeat_headings),
+            "label": json_obj.get("label", self._label),
+            "groupRule": json_obj.get("groupRule", lambda: self._group_rule.get_json()),
+            "groupLimit": json_obj.get("groupLimit", lambda: self._group_limit.get_json()),
+        }
+
+        if json_obj.get("valueBucket", None) or self._value_bucket:
+            self._json_obj["valueBucket"] = \
+                json_obj.get("valueBucket", lambda: self._value_bucket.get_json())
+        
+        if json_obj.get("sourceColumnOffset", None) or self._column_offset:
+            self._json_obj["sourceColumnOffset"] = \
+                json_obj.get("sourceColumn_Offset", self._column_offset)
+        
+        if json_obj.get("dataSourceColumnReference", None) or self._source:
+            self._json_obj.get("dataSourceColumnReference", lambda: self._source[0] + self._source[1])
+        
 
     def to_json(self) -> dict:
-        return {}
+        return self.json_obj
 
 
 class PivotTable(object):
@@ -253,7 +359,6 @@ class PivotTable(object):
     :param source:          Cell range of the desired pivot table data in the form of tuple of tuples
     :param layout:          Horizontal/Vertical Layout of Pivot Table Data
     :param filter_specs:    Filtering Settings for unwanted data to be included in table
-    :param anchor_cell:     Position of the left corner of the chart in the form of cell address or cell object
     :param json_obj:        Represents a json structure of the chart as given in `api <https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/pivot-tables>`__.
 
     >>> pivot = PivotTable(source=("A1", "B2"), worksheet=wks)
@@ -365,7 +470,7 @@ class PivotTable(object):
     
     @json_obj.setter
     def json_obj(self, value: dict):
-        self._json_obj = value
+        self.set_json(value)
 
     def set_json(self, json_obj: dict):
         self._json_obj = {
@@ -376,12 +481,13 @@ class PivotTable(object):
             "valueLayout": json_obj.get("valueLayout", self._layout.value)
         }
 
-        if json_obj["source"] or self._source:
+        if json_obj.get("source", None) or self._source:
             self._json_obj["source"] = json_obj.get("source", self._source.to_json())
         
-        if json_obj["dataSourceId"] or self._data_source_id:
+        if json_obj.get("dataSourceId", None) or self._data_source_id:
             self._json_obj["dataSourceId"] = json_obj.get("dataSourceId", self._data_source_id)
         
         if (self._json_obj["source"] != None) and (self._json_obj["dataSourceId"] != None):
             raise InvalidArgumentValue("source and dataSourceId are both defined")
+
 
